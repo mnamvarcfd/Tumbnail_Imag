@@ -1,0 +1,72 @@
+org: mnamvar
+app: tumbnail-creation
+service: tumbnail-creation
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: python3.9
+  region: ca-central-1
+  profile: serverless-admin
+  stage: dev
+  timeout: 10
+  memorySize: 512
+  environment:
+    TUMBTAIL_SIZE: 128
+    REGION_NAME: ${self.provider.region}
+    DYNAMO_TABLE: ${self:custom.dynamoTable}
+
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Resource: "*"
+          Action: "s3:*"
+        - Effect: "Allow"
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMO_TABLE}"
+
+custom:
+  bucket: image-thumbnail-2023
+  pythonRequirements:
+    dockerizePip: true
+  dynamoTable: img-url-table
+
+
+functions:
+  s3_tumbnail_generator:
+    handler: handler.s3_tumbnail_generator
+    events:
+      - s3: 
+          bucket: ${self:custom.bucket}
+          event: s3:ObjectCreated:*
+          rules:
+            - suffix: .png
+  
+
+
+
+resources:
+  Resources:
+    tumbnailDynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMO_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S  # Assuming 'id' is of type String (S)
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+
+
+plugins:
+  - serverless-python-requirements
