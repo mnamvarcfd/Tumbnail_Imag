@@ -1,3 +1,4 @@
+import json
 import os
 import io
 import uuid
@@ -81,3 +82,53 @@ def store_tumbnail_url_to_dynamoDB(img_url):
     table.put_item(Item=item)
     
     return {"status": "ok", "msg": item["url"]}
+
+
+def s3_get_all_tumnnails_url(event, context):
+    table = dynamodb.Table(db_table)
+    
+    res = table.scan()
+    
+    items = res["Items"]
+    
+    return {
+        "statusCode": 200,
+        "headers": {"Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"},
+        "body": json.dumps(items, indent=2),
+        "isBase64Encoded": False,
+    }
+
+
+def s3_get_tumnnail_url(event, context):
+    table = dynamodb.Table(db_table)
+    
+    res = table.get_item(Key = {
+        "id": event["pathParameters"]["id"]
+    })
+    
+    item = res["Item"]
+    
+    return {
+        "statusCode": 200,
+        "headers": {"Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"},
+        "body": json.dumps(item),
+        "isBase64Encoded": False,
+    }
+
+
+def s3_delete_tumnnail_url(event, context):
+    table = dynamodb.Table(db_table)
+    
+    item = event["pathParameters"]["id"]
+    table.delete_item(Key = {
+        "id": item
+    })
+    
+    return {
+        "statusCode": 200,
+        "body": json.dumps({"message": f"Item ${event['pathParameters']['id']} deleted successfully"}),
+        "isBase64Encoded": False,
+    }
+

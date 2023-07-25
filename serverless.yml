@@ -7,7 +7,7 @@ frameworkVersion: '3'
 provider:
   name: aws
   runtime: python3.9
-  region: ca-central-1
+  region: ca-central-1  #this part is hard coded in some part of the code
   profile: serverless-admin
   stage: dev
   timeout: 10
@@ -16,6 +16,10 @@ provider:
     TUMBTAIL_SIZE: 128
     REGION_NAME: ${self.provider.region}
     DYNAMO_TABLE: ${self:custom.dynamoTable}
+  layers:
+    myLayer:
+      arn: arn:aws:lambda:ca-central-1:770693421928:layer:Klayers-p39-pillow:1
+
 
   iam:
     role:
@@ -49,9 +53,38 @@ functions:
           event: s3:ObjectCreated:*
           rules:
             - suffix: .png
+    layers:
+      - ${self:provider.layers.myLayer.arn}
   
+  list:
+    handler: handler.s3_get_all_tumnnails_url
+    events:
+      - http:
+          path: image/get_all
+          method: get
+          cors: true
+    layers:
+      - ${self:provider.layers.myLayer.arn}
 
+  get:
+    handler: handler.s3_get_tumnnail_url
+    events:
+      - http:
+          path: image/get/{id}
+          method: get
+          cors: true
+    layers:
+      - ${self:provider.layers.myLayer.arn}
 
+  delete:
+    handler: handler.s3_delete_tumnnail_url
+    events:
+      - http:
+          path: image/delete/{id}
+          method: delete
+          cors: true
+    layers:
+      - ${self:provider.layers.myLayer.arn}
 
 resources:
   Resources:
